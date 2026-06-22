@@ -3,6 +3,7 @@ import { stageForIndex } from "../../src/game/content/stages";
 import { createActionState } from "../../src/game/input/actions";
 import { createInitialState, createInitialStateWithHighScore, startOrContinue, updateGame } from "../../src/game/simulation/game";
 import { createCourse } from "../../src/game/simulation/course";
+import { fishJump, sealEmergence } from "../../src/game/simulation/objectMotion";
 import { SCORE_VALUES } from "../../src/game/simulation/scoring";
 
 function runSeconds(seconds: number, update: (dt: number) => void): void {
@@ -117,6 +118,52 @@ describe("polar runner simulation", () => {
     expect(events.some((event) => event.type === "collect" && event.points === SCORE_VALUES.jump)).toBe(true);
     expect(state.score).toBe(SCORE_VALUES.jump);
     expect(state.objects[0].collected).toBe(true);
+  });
+
+  it("only collides with seals while they are emerged from holes", () => {
+    const hiddenSeal = createInitialState(20);
+    const hiddenInput = createActionState();
+    hiddenSeal.objects = [
+      { id: "seal-hidden", kind: "seal", distance: 15, lane: 0, width: 0.3, bonus: 0, variant: 3, collected: false, hit: false }
+    ];
+    startOrContinue(hiddenSeal);
+    const hiddenEvents = updateGame(hiddenSeal, hiddenInput, 1 / 60);
+    expect(sealEmergence(hiddenSeal.objects[0].distance - hiddenSeal.distanceTravelled, 3)).toBeLessThanOrEqual(0.35);
+    expect(hiddenEvents.some((event) => event.type === "hit")).toBe(false);
+
+    const emergedSeal = createInitialState(21);
+    const emergedInput = createActionState();
+    emergedSeal.objects = [
+      { id: "seal-up", kind: "seal", distance: 20, lane: 0, width: 0.3, bonus: 0, variant: 1, collected: false, hit: false }
+    ];
+    startOrContinue(emergedSeal);
+    const emergedEvents = updateGame(emergedSeal, emergedInput, 1 / 60);
+    expect(sealEmergence(emergedSeal.objects[0].distance - emergedSeal.distanceTravelled, 1)).toBeGreaterThan(0.35);
+    expect(emergedEvents.some((event) => event.type === "hit")).toBe(true);
+  });
+
+  it("requires fish to be visible in its jump arc before it can be caught", () => {
+    const hiddenFish = createInitialState(22);
+    const hiddenInput = createActionState();
+    hiddenFish.objects = [
+      { id: "fish-low", kind: "fish", distance: -25, lane: 0, width: 0.3, bonus: SCORE_VALUES.fish, variant: 0, collected: false, hit: false }
+    ];
+    hiddenFish.player.jumpY = 58;
+    startOrContinue(hiddenFish);
+    const hiddenEvents = updateGame(hiddenFish, hiddenInput, 1 / 60);
+    expect(fishJump(hiddenFish.objects[0].distance - hiddenFish.distanceTravelled, 0)).toBeLessThanOrEqual(0.2);
+    expect(hiddenEvents.some((event) => event.type === "collect")).toBe(false);
+
+    const visibleFish = createInitialState(24);
+    const visibleInput = createActionState();
+    visibleFish.objects = [
+      { id: "fish-up", kind: "fish", distance: 20, lane: 0, width: 0.3, bonus: SCORE_VALUES.fish, variant: 0, collected: false, hit: false }
+    ];
+    visibleFish.player.jumpY = 58;
+    startOrContinue(visibleFish);
+    const visibleEvents = updateGame(visibleFish, visibleInput, 1 / 60);
+    expect(fishJump(visibleFish.objects[0].distance - visibleFish.distanceTravelled, 0)).toBeGreaterThan(0.2);
+    expect(visibleEvents.some((event) => event.type === "collect" && event.points === SCORE_VALUES.fish)).toBe(true);
   });
 
   it("clears the stage and grants a time bonus", () => {

@@ -1,6 +1,7 @@
 import { STAGES, stageForIndex, TOTAL_STAGES } from "../content/stages";
 import type { ActionState } from "../input/actions";
 import { createCourse } from "./course";
+import { fishJump, sealEmergence } from "./objectMotion";
 import { SCORE_VALUES } from "./scoring";
 import type { CourseObject, GameEvent, GameSnapshot, GameState } from "./types";
 
@@ -116,11 +117,13 @@ function addMessage(state: GameState, message: string, seconds = 1.1): void {
   state.messageTimer = seconds;
 }
 
-function handleCollision(state: GameState, object: CourseObject, events: GameEvent[]): void {
+function handleCollision(state: GameState, object: CourseObject, relativeDistance: number, events: GameEvent[]): void {
   if (object.collected || object.hit) return;
 
   const isJumpingHigh = state.player.jumpY > 42;
   const isJumpingVeryHigh = state.player.jumpY > 72;
+  const currentFishJump = object.kind === "fish" ? fishJump(relativeDistance, object.variant) : 0;
+  const currentSealEmergence = object.kind === "seal" ? sealEmergence(relativeDistance, object.variant) : 0;
 
   if (object.kind === "flag") {
     object.collected = true;
@@ -130,7 +133,7 @@ function handleCollision(state: GameState, object: CourseObject, events: GameEve
     return;
   }
 
-  if (object.kind === "fish" && isJumpingHigh) {
+  if (object.kind === "fish" && isJumpingHigh && currentFishJump > 0.2) {
     object.collected = true;
     awardPoints(state, object.bonus);
     addMessage(state, `물고기 +${object.bonus}`);
@@ -153,6 +156,10 @@ function handleCollision(state: GameState, object: CourseObject, events: GameEve
     state.timeLeft = Math.max(0, state.timeLeft - 1.5);
     addMessage(state, object.kind === "crevasse" ? "크레바스!" : "빙판 구멍!");
     events.push({ type: "hit", kind: object.kind, message: state.message });
+    return;
+  }
+
+  if (object.kind === "seal" && currentSealEmergence <= 0.35) {
     return;
   }
 
@@ -263,7 +270,7 @@ export function updateGame(state: GameState, input: ActionState, deltaSeconds: n
     }
     if (relative > 42 || relative < -34) continue;
     if (collideLane(state.player.lane, object)) {
-      handleCollision(state, object, events);
+      handleCollision(state, object, relative, events);
     }
   }
 

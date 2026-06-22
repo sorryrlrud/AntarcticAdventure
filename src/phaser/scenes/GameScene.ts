@@ -12,6 +12,7 @@ import {
   updateGame,
   VIEW_DISTANCE
 } from "../../game/simulation/game";
+import { fishJump, sealEmergence } from "../../game/simulation/objectMotion";
 import type { CourseObject, GameEvent, GameState } from "../../game/simulation/types";
 import { projectTrackPoint } from "../view/projection";
 import { createGameTextures } from "../view/textures";
@@ -280,18 +281,34 @@ export class GameScene extends Phaser.Scene {
       const sprite = this.getObjectSprite(object);
       const relative = object.distance - this.state.distanceTravelled;
       const p = projectTrackPoint(object.lane, relative, width, height);
-      const jumpLift = object.kind === "fish" ? 18 + Math.sin(this.time.now / 160 + object.variant) * 4 : 0;
+      const fishLift = object.kind === "fish" ? (14 + fishJump(relative, object.variant) * 38) * p.scale : 0;
+      const sealLift = object.kind === "seal" ? sealEmergence(relative, object.variant) * 14 * p.scale : 0;
+      if (object.kind === "fish" || object.kind === "seal") {
+        this.drawPopOutHole(p.x, p.y, p.scale);
+      }
       sprite
         .setVisible(true)
-        .setPosition(p.x, p.y - jumpLift * p.scale)
+        .setPosition(p.x, p.y - fishLift - sealLift)
         .setScale(Math.max(0.12, p.scale * (object.kind === "crevasse" ? object.width * 1.35 : 1)))
         .setDepth(9 + p.depth * 10)
-        .setAlpha(object.kind === "flag" && object.variant === 3 ? 0.72 + Math.sin(this.time.now / 90) * 0.28 : 1);
+        .setAlpha(this.objectAlpha(object, relative));
     }
 
     for (const [id, sprite] of this.objectSprites) {
       if (!visibleIds.has(id)) sprite.setVisible(false);
     }
+  }
+
+  private drawPopOutHole(x: number, y: number, scale: number): void {
+    this.graphics.fillStyle(0x6bd7f3, 0.8).fillEllipse(x, y + 4 * scale, 42 * scale, 15 * scale);
+    this.graphics.fillStyle(0x0e1a2a, 0.88).fillEllipse(x, y + 3 * scale, 32 * scale, 10 * scale);
+  }
+
+  private objectAlpha(object: CourseObject, relative: number): number {
+    if (object.kind === "flag" && object.variant === 3) return 0.72 + Math.sin(this.time.now / 90) * 0.28;
+    if (object.kind === "seal") return 0.18 + sealEmergence(relative, object.variant) * 0.82;
+    if (object.kind === "fish") return 0.35 + fishJump(relative, object.variant) * 0.65;
+    return 1;
   }
 
   private getObjectSprite(object: CourseObject): Phaser.GameObjects.Image {
