@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta
+      name="description"
+      content="A web and mobile Antarctic runner homage with original pixel art and synth audio."
+    />
+    <title>Polar Dash</title>
+  </head>
+  <body>
+    <main id="app" class="shell">
+      <section class="game-stage" aria-label="Polar Dash game">
+        <div id="game-container" class="game-container"></div>
+        <div class="hud top-hud" aria-live="polite">
+          <div class="hud-cell">
+            <span class="hud-label">SCORE</span>
+            <strong id="score">000000</strong>
+          </div>
+          <div class="hud-cell route">
+            <span class="hud-label">COURSE</span>
+            <strong id="course">1/10</strong>
+          </div>
+          <div class="hud-cell">
+            <span class="hud-label">TIME</span>
+            <strong id="time">00</strong>
+          </div>
+          <div class="hud-cell">
+            <span class="hud-label">SPEED</span>
+            <strong id="speed">000</strong>
+          </div>
+        </div>
+        <div class="hud bottom-hud">
+          <div id="message" class="message">ENTER 또는 START로 출발</div>
+          <div id="station" class="station">AUSTRALIA BASE</div>
+          <button id="mute-button" class="icon-button" type="button" aria-label="Mute audio">
+            ♪
+          </button>
+        </div>
+        <div id="title-panel" class="title-panel">
+          <h1>Polar Dash</h1>
+          <p>남극 기지를 향해 달리고, 점프하고, 보너스를 모으세요.</p>
+          <button id="start-button" type="button" class="start-button">START</button>
+        </div>
+      </section>
+      <nav class="mobile-controls" aria-label="Mobile game controls">
+        <div class="control-cluster">
+          <button data-action="left" class="control-button" type="button" aria-label="Move left">◀</button>
+          <button data-action="right" class="control-button" type="button" aria-label="Move right">▶</button>
+        </div>
+        <div class="control-cluster">
+          <button data-action="slow" class="control-button small" type="button" aria-label="Slow down">−</button>
+          <button data-action="fast" class="control-button small" type="button" aria-label="Speed up">＋</button>
+        </div>
+        <button data-action="jump" class="control-button jump" type="button" aria-label="Jump">JUMP</button>
+      </nav>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
