@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { stageForIndex } from "../../src/game/content/stages";
 import { createActionState } from "../../src/game/input/actions";
 import { createInitialState, startOrContinue, updateGame } from "../../src/game/simulation/game";
+import { createCourse } from "../../src/game/simulation/course";
 
 function runSeconds(seconds: number, update: (dt: number) => void): void {
   for (let t = 0; t < seconds; t += 1 / 60) update(1 / 60);
@@ -62,5 +64,39 @@ describe("polar runner simulation", () => {
     updateGame(state, input, 1 / 60);
     expect(state.phase).toBe("stage-clear");
     expect(state.score).toBeGreaterThan(before);
+  });
+
+  it("shows the Antarctic route map between stages before running again", () => {
+    const state = createInitialState(23);
+    const input = createActionState();
+    startOrContinue(state);
+    state.distanceTravelled = state.stage.length - 3;
+    updateGame(state, input, 1 / 60);
+    expect(state.phase).toBe("stage-clear");
+    runSeconds(2.6, (dt) => updateGame(state, input, dt));
+    expect(state.phase).toBe("map");
+    expect(state.stageIndex).toBe(1);
+    runSeconds(1.9, (dt) => updateGame(state, input, dt));
+    expect(state.phase).toBe("running");
+  });
+
+  it("loops after ten courses and increases next lap pressure", () => {
+    const state = createInitialState(29);
+    state.stageIndex = 9;
+    state.stage = stageForIndex(9);
+    state.lap = 0;
+    state.distanceTravelled = state.stage.length - 3;
+    startOrContinue(state);
+    updateGame(state, createActionState(), 1 / 60);
+    runSeconds(2.6, (dt) => updateGame(state, createActionState(), dt));
+    expect(state.phase).toBe("map");
+    expect(state.stageIndex).toBe(0);
+    expect(state.lap).toBe(1);
+  });
+
+  it("places more course objects on later laps", () => {
+    const firstLap = createCourse(3, 5000, 1983, 0);
+    const secondLap = createCourse(3, 5000, 1983, 1);
+    expect(secondLap.length).toBeGreaterThan(firstLap.length);
   });
 });

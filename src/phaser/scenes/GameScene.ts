@@ -20,6 +20,10 @@ interface ActionEventDetail {
   pressed: boolean;
 }
 
+interface DebugEventDetail {
+  command: "finish-stage";
+}
+
 export class GameScene extends Phaser.Scene {
   private state: GameState = createInitialState();
   private inputState = createActionState();
@@ -53,10 +57,12 @@ export class GameScene extends Phaser.Scene {
     this.keys = this.input.keyboard?.addKeys("W,A,S,D,Z,X,ENTER,P,M,SPACE") as Record<string, Phaser.Input.Keyboard.Key>;
 
     window.addEventListener("polar-action", this.onExternalAction);
+    if (this.isLocalDebugHost()) window.addEventListener("polar-debug", this.onDebugAction);
     window.addEventListener("keydown", this.onKeyDown);
     window.addEventListener("keyup", this.onKeyUp);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       window.removeEventListener("polar-action", this.onExternalAction);
+      if (this.isLocalDebugHost()) window.removeEventListener("polar-debug", this.onDebugAction);
       window.removeEventListener("keydown", this.onKeyDown);
       window.removeEventListener("keyup", this.onKeyUp);
     });
@@ -86,6 +92,17 @@ export class GameScene extends Phaser.Scene {
     if (detail.action === "mute" && detail.pressed) this.toggleMute();
     setAction(this.inputState, detail.action, detail.pressed);
   };
+
+  private onDebugAction = (event: Event): void => {
+    const detail = (event as CustomEvent<DebugEventDetail>).detail;
+    if (!detail || detail.command !== "finish-stage" || this.state.phase !== "running") return;
+    this.state.objects = [];
+    this.state.distanceTravelled = Math.max(0, this.state.stage.length - 3);
+  };
+
+  private isLocalDebugHost(): boolean {
+    return ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
+  }
 
   private onKeyDown = (event: KeyboardEvent): void => {
     const action = this.actionForKey(event.key);
@@ -197,6 +214,7 @@ export class GameScene extends Phaser.Scene {
     this.drawStation(width, height);
     this.drawObjects(width, height);
     this.drawPlayer(width, height);
+    if (this.state.phase === "map") this.drawMapOverlay(width, height);
   }
 
   private drawWorld(width: number, height: number): void {
@@ -306,6 +324,52 @@ export class GameScene extends Phaser.Scene {
     if (this.state.player.boostTimer > 0) {
       this.graphics.fillStyle(0xffd34a, 0.45).fillEllipse(p.x, y + 17, 50, 12);
     }
+  }
+
+  private drawMapOverlay(width: number, height: number): void {
+    const panelX = width * 0.14;
+    const panelY = height * 0.24;
+    const panelW = width * 0.72;
+    const panelH = height * 0.54;
+    const route = [
+      [0.18, 0.62],
+      [0.29, 0.5],
+      [0.4, 0.56],
+      [0.49, 0.42],
+      [0.58, 0.5],
+      [0.67, 0.37],
+      [0.76, 0.48],
+      [0.69, 0.62],
+      [0.51, 0.68],
+      [0.34, 0.66]
+    ] as const;
+
+    this.graphics.fillStyle(0xf7fdff, 0.94).fillRoundedRect(panelX, panelY, panelW, panelH, 8);
+    this.graphics.lineStyle(3, 0x244c66, 0.88).strokeRoundedRect(panelX, panelY, panelW, panelH, 8);
+    this.graphics.fillStyle(0xcff4ff, 1).fillEllipse(width * 0.5, panelY + panelH * 0.54, panelW * 0.68, panelH * 0.74);
+    this.graphics.lineStyle(2, 0xffffff, 0.9);
+    this.graphics.strokeEllipse(width * 0.5, panelY + panelH * 0.54, panelW * 0.52, panelH * 0.55);
+
+    for (let index = 1; index < route.length; index += 1) {
+      const [aX, aY] = route[index - 1];
+      const [bX, bY] = route[index];
+      const completed = index <= this.state.stageIndex || this.state.lap > 0;
+      this.graphics.lineStyle(completed ? 4 : 2, completed ? 0xf25546 : 0x84bfd0, completed ? 0.95 : 0.7);
+      this.graphics.lineBetween(panelX + panelW * aX, panelY + panelH * aY, panelX + panelW * bX, panelY + panelH * bY);
+    }
+
+    route.forEach(([x, y], index) => {
+      const px = panelX + panelW * x;
+      const py = panelY + panelH * y;
+      const isCurrent = index === this.state.stageIndex;
+      this.graphics.fillStyle(isCurrent ? 0xffd34a : index < this.state.stageIndex || this.state.lap > 0 ? 0xf25546 : 0xffffff, 1);
+      this.graphics.fillCircle(px, py, isCurrent ? 7 : 5);
+      this.graphics.lineStyle(2, 0x244c66, 1).strokeCircle(px, py, isCurrent ? 7 : 5);
+    });
+
+    this.graphics.fillStyle(0x102132, 1);
+    this.graphics.fillRect(panelX + panelW * 0.43, panelY + panelH * 0.09, panelW * 0.14, 4);
+    this.graphics.fillCircle(panelX + panelW * 0.5, panelY + panelH * 0.09, 8);
   }
 
   private publishState(): void {

@@ -10,6 +10,10 @@ const VIEW_DISTANCE = 1120;
 
 export { VIEW_DISTANCE };
 
+function timeLimitFor(stageTimeLimit: number, lap: number): number {
+  return Math.max(45, stageTimeLimit - lap * 4);
+}
+
 function makeStageState(seed: number, stageIndex: number, lap: number, score: number): GameState {
   const stage = stageForIndex(stageIndex);
   return {
@@ -19,7 +23,7 @@ function makeStageState(seed: number, stageIndex: number, lap: number, score: nu
     lap,
     stage,
     distanceTravelled: 0,
-    timeLeft: stage.timeLimit,
+    timeLeft: timeLimitFor(stage.timeLimit, lap),
     score,
     player: {
       lane: 0,
@@ -29,10 +33,11 @@ function makeStageState(seed: number, stageIndex: number, lap: number, score: nu
       stumbleTimer: 0,
       boostTimer: 0
     },
-    objects: createCourse(stageIndex, stage.length, seed),
+    objects: createCourse(stageIndex, stage.length, seed, lap),
     message: "ENTER 또는 START로 출발",
     messageTimer: 0,
-    clearTimer: 0
+    clearTimer: 0,
+    mapTimer: 0
   };
 }
 
@@ -64,6 +69,13 @@ export function startOrContinue(state: GameState): GameEvent[] {
 
   if (state.phase === "stage-clear") {
     return advanceStage(state);
+  }
+
+  if (state.phase === "map") {
+    state.phase = "running";
+    state.message = "READY";
+    state.messageTimer = 0.8;
+    return [{ type: "start", message: state.message }];
   }
 
   return [];
@@ -149,9 +161,9 @@ function advanceStage(state: GameState): GameEvent[] {
   const nextLap = state.lap + (nextStageIndex >= TOTAL_STAGES ? 1 : 0);
   const score = state.score;
   const next = makeStageState(state.seed, nextStageIndex % TOTAL_STAGES, nextLap, score);
-  Object.assign(state, next, { phase: "running", message: "다음 코스!" });
-  state.messageTimer = 1.4;
-  return [{ type: "next-stage", message: state.message }];
+  Object.assign(state, next, { phase: "map", message: "남극 지도 확인" });
+  state.mapTimer = 1.8;
+  return [{ type: "map", message: state.message }];
 }
 
 export function updateGame(state: GameState, input: ActionState, deltaSeconds: number): GameEvent[] {
@@ -167,6 +179,17 @@ export function updateGame(state: GameState, input: ActionState, deltaSeconds: n
     state.clearTimer -= dt;
     if (input.start || state.clearTimer <= 0) {
       events.push(...advanceStage(state));
+    }
+    return events;
+  }
+
+  if (state.phase === "map") {
+    state.mapTimer -= dt;
+    if (input.start || state.mapTimer <= 0) {
+      state.phase = "running";
+      state.message = state.lap > 0 ? `LAP ${state.lap + 1} READY` : "READY";
+      state.messageTimer = 1.0;
+      events.push({ type: "next-stage", message: state.message });
     }
     return events;
   }
@@ -259,6 +282,7 @@ export function createSnapshot(state: GameState): GameSnapshot {
     score: state.score,
     stageIndex: state.stageIndex,
     stageCount: STAGES.length,
+    lap: state.lap,
     stageName: state.stage.name,
     timeLeft: state.timeLeft,
     speed: state.player.speed,

@@ -1,6 +1,6 @@
 import type { StageConfig } from "../content/stages";
 
-export type GamePhase = "ready" | "running" | "paused" | "stage-clear" | "game-over";
+export type GamePhase = "ready" | "running" | "paused" | "stage-clear" | "map" | "game-over";
 
 export type CourseObjectKind = "hole" | "crevasse" | "seal" | "flag" | "fish";
 
@@ -39,6 +39,7 @@ export interface GameState {
   message: string;
   messageTimer: number;
   clearTimer: number;
+  mapTimer: number;
 }
 
 export type GameEventType =
@@ -47,6 +48,7 @@ export type GameEventType =
   | "collect"
   | "hit"
   | "stage-clear"
+  | "map"
   | "next-stage"
   | "game-over";
 
@@ -62,6 +64,7 @@ export interface GameSnapshot {
   score: number;
   stageIndex: number;
   stageCount: number;
+  lap: number;
   stageName: string;
   timeLeft: number;
   speed: number;

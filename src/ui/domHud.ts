@@ -41,12 +41,14 @@ export function mountHud(): void {
   window.addEventListener("polar-state", (event) => {
     const state = (event as CustomEvent<GameSnapshot>).detail;
     score.textContent = Math.floor(state.score).toString().padStart(6, "0");
-    course.textContent = `${state.stageIndex + 1}/${state.stageCount}`;
+    course.textContent = state.lap > 0 ? `${state.stageIndex + 1}/${state.stageCount} L${state.lap + 1}` : `${state.stageIndex + 1}/${state.stageCount}`;
     time.textContent = Math.ceil(state.timeLeft).toString().padStart(2, "0");
     speed.textContent = Math.round(state.speed).toString().padStart(3, "0");
     message.textContent =
       state.message ||
-      (state.phase === "running"
+      (state.phase === "map"
+        ? `지도: ${state.stageName}`
+        : state.phase === "running"
         ? `${Math.ceil(state.distanceLeft)}m`
         : state.phase === "paused"
           ? "일시정지"

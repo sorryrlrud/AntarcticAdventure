@@ -23,3 +23,15 @@ test("mobile controls are visible and can start/jump", async ({ page, isMobile }
   await expect(page.locator("#title-panel")).toHaveClass(/is-hidden/);
   await expect(page.locator("#time")).not.toHaveText("70");
 });
+
+test("stage clear presents a route map before the next course", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "START" }).click();
+  await page.evaluate(() => {
+    window.dispatchEvent(new CustomEvent("polar-debug", { detail: { command: "finish-stage" } }));
+  });
+  await expect(page.locator("#message")).toContainText("TIME BONUS");
+  await expect(page.locator("#message")).toContainText("지도", { timeout: 4000 });
+  await expect(page.locator("#course")).toHaveText("2/10");
+  await expect(page.locator("canvas")).toBeVisible();
+});
