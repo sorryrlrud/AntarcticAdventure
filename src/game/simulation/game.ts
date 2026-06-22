@@ -1,6 +1,7 @@
 import { STAGES, stageForIndex, TOTAL_STAGES } from "../content/stages";
 import type { ActionState } from "../input/actions";
 import { createCourse } from "./course";
+import { SCORE_VALUES } from "./scoring";
 import type { CourseObject, GameEvent, GameSnapshot, GameState } from "./types";
 
 const MIN_SPEED = 120;
@@ -122,9 +123,16 @@ function handleCollision(state: GameState, object: CourseObject, events: GameEve
   if (object.kind === "fish" && isJumpingHigh) {
     object.collected = true;
     state.score += object.bonus;
-    state.player.boostTimer = Math.max(state.player.boostTimer, object.variant === 3 ? 2.2 : 1.2);
     addMessage(state, `물고기 +${object.bonus}`);
     events.push({ type: "collect", kind: object.kind, points: object.bonus, message: state.message });
+    return;
+  }
+
+  if ((object.kind === "hole" || object.kind === "crevasse") && isJumpingHigh) {
+    object.collected = true;
+    state.score += SCORE_VALUES.jump;
+    addMessage(state, `점프 +${SCORE_VALUES.jump}`, 0.7);
+    events.push({ type: "collect", kind: object.kind, points: SCORE_VALUES.jump, message: state.message });
     return;
   }
 
@@ -150,9 +158,9 @@ function handleCollision(state: GameState, object: CourseObject, events: GameEve
 
   if (object.kind === "seal" && isJumpingVeryHigh) {
     object.collected = true;
-    state.score += 200;
-    addMessage(state, "물개 점프 +200");
-    events.push({ type: "collect", kind: object.kind, points: 200, message: state.message });
+    state.score += SCORE_VALUES.jump;
+    addMessage(state, `물개 점프 +${SCORE_VALUES.jump}`);
+    events.push({ type: "collect", kind: object.kind, points: SCORE_VALUES.jump, message: state.message });
   }
 }
 
@@ -257,7 +265,7 @@ export function updateGame(state: GameState, input: ActionState, deltaSeconds: n
   }
 
   if (state.distanceTravelled >= state.stage.length) {
-    const timeBonus = Math.ceil(state.timeLeft) * 50;
+    const timeBonus = Math.ceil(state.timeLeft) * SCORE_VALUES.timeSecond;
     state.score += timeBonus;
     state.phase = "stage-clear";
     state.clearTimer = 2.5;

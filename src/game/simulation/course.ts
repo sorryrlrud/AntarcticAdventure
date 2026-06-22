@@ -1,4 +1,5 @@
 import { createRng } from "./rng";
+import { SCORE_VALUES } from "./scoring";
 import type { CourseObject, CourseObjectKind } from "./types";
 
 const LANES = [-0.78, -0.52, -0.26, 0, 0.26, 0.52, 0.78] as const;
@@ -26,8 +27,7 @@ export function createCourse(stageIndex: number, length: number, seed: number, l
     const variant = rng.int(0, 3);
     const lane = kind === "crevasse" && rng.next() < 0.46 ? rng.pick([-0.34, 0, 0.34]) : rng.pick(LANES);
     const width = kind === "crevasse" ? rng.pick([0.58, 0.72, 0.9]) : kind === "seal" ? 0.3 : 0.24;
-    const bonus =
-      kind === "flag" ? [500, 600, 700, 1000][variant] : kind === "fish" ? [300, 500, 700, 1000][variant] : 0;
+    const bonus = kind === "flag" ? SCORE_VALUES.flag : kind === "fish" ? SCORE_VALUES.fish : 0;
 
     objects.push({
       id: `${stageIndex}-${objectIndex}`,
@@ -52,7 +52,7 @@ export function createCourse(stageIndex: number, length: number, seed: number, l
       distance: marker + rng.int(-70, 70),
       lane: rng.pick([-0.62, 0.62]),
       width: 0.24,
-      bonus: 700,
+      bonus: SCORE_VALUES.flag,
       variant: 2,
       collected: false,
       hit: false

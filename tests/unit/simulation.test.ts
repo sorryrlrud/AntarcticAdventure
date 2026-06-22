@@ -3,6 +3,7 @@ import { stageForIndex } from "../../src/game/content/stages";
 import { createActionState } from "../../src/game/input/actions";
 import { createInitialState, startOrContinue, updateGame } from "../../src/game/simulation/game";
 import { createCourse } from "../../src/game/simulation/course";
+import { SCORE_VALUES } from "../../src/game/simulation/scoring";
 
 function runSeconds(seconds: number, update: (dt: number) => void): void {
   for (let t = 0; t < seconds; t += 1 / 60) update(1 / 60);
@@ -34,13 +35,33 @@ describe("polar runner simulation", () => {
     const state = createInitialState(13);
     const input = createActionState();
     state.objects = [
-      { id: "flag", kind: "flag", distance: 15, lane: 0, width: 0.3, bonus: 700, variant: 2, collected: false, hit: false }
+      {
+        id: "flag",
+        kind: "flag",
+        distance: 15,
+        lane: 0,
+        width: 0.3,
+        bonus: SCORE_VALUES.flag,
+        variant: 2,
+        collected: false,
+        hit: false
+      }
     ];
     startOrContinue(state);
     const events = updateGame(state, input, 1 / 60);
     expect(events.some((event) => event.type === "collect")).toBe(true);
-    expect(state.score).toBe(700);
+    expect(state.score).toBe(SCORE_VALUES.flag);
     expect(state.objects[0].collected).toBe(true);
+  });
+
+  it("uses fixed flag and fish score values while generating courses", () => {
+    const objects = createCourse(0, 2400, 1983, 0);
+    const flags = objects.filter((object) => object.kind === "flag");
+    const fish = objects.filter((object) => object.kind === "fish");
+    expect(flags.length).toBeGreaterThan(0);
+    expect(fish.length).toBeGreaterThan(0);
+    expect(flags.every((object) => object.bonus === SCORE_VALUES.flag)).toBe(true);
+    expect(fish.every((object) => object.bonus === SCORE_VALUES.fish)).toBe(true);
   });
 
   it("stumbles on a hole when not jumping", () => {
@@ -53,6 +74,20 @@ describe("polar runner simulation", () => {
     const events = updateGame(state, input, 1 / 60);
     expect(events.some((event) => event.type === "hit")).toBe(true);
     expect(state.player.stumbleTimer).toBeGreaterThan(0);
+  });
+
+  it("awards the small jump bonus for clearing hazards", () => {
+    const state = createInitialState(18);
+    const input = createActionState();
+    state.objects = [
+      { id: "hole", kind: "hole", distance: 15, lane: 0, width: 0.3, bonus: 0, variant: 0, collected: false, hit: false }
+    ];
+    state.player.jumpY = 58;
+    startOrContinue(state);
+    const events = updateGame(state, input, 1 / 60);
+    expect(events.some((event) => event.type === "collect" && event.points === SCORE_VALUES.jump)).toBe(true);
+    expect(state.score).toBe(SCORE_VALUES.jump);
+    expect(state.objects[0].collected).toBe(true);
   });
 
   it("clears the stage and grants a time bonus", () => {
