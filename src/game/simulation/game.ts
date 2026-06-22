@@ -9,8 +9,10 @@ const MIN_SPEED = 120;
 const CRUISE_SPEED = 245;
 const MAX_SPEED = 390;
 const VIEW_DISTANCE = 1120;
+const FLIGHT_SECONDS = 4.2;
+const FLIGHT_HEIGHT = 160;
 
-export { VIEW_DISTANCE };
+export { FLIGHT_HEIGHT, VIEW_DISTANCE };
 
 function timeLimitFor(stageTimeLimit: number, lap: number): number {
   return Math.max(45, stageTimeLimit - lap * 4);
@@ -34,7 +36,8 @@ function makeStageState(seed: number, stageIndex: number, lap: number, score: nu
       jumpY: 0,
       jumpVelocity: 0,
       stumbleTimer: 0,
-      boostTimer: 0
+      boostTimer: 0,
+      flightTimer: 0
     },
     objects: createCourse(stageIndex, stage.length, seed, lap),
     message: "ENTER 또는 START로 출발",
@@ -128,7 +131,14 @@ function handleCollision(state: GameState, object: CourseObject, relativeDistanc
   if (object.kind === "flag") {
     object.collected = true;
     awardPoints(state, object.bonus);
-    addMessage(state, `깃발 +${object.bonus}`);
+    if (object.variant === 3) {
+      state.player.flightTimer = Math.max(state.player.flightTimer, FLIGHT_SECONDS);
+      state.player.jumpY = Math.max(state.player.jumpY, FLIGHT_HEIGHT);
+      state.player.jumpVelocity = 0;
+      addMessage(state, `프로펠러 +${object.bonus}`, 1.4);
+    } else {
+      addMessage(state, `깃발 +${object.bonus}`);
+    }
     events.push({ type: "collect", kind: object.kind, points: object.bonus, message: state.message });
     return;
   }
@@ -138,6 +148,19 @@ function handleCollision(state: GameState, object: CourseObject, relativeDistanc
     awardPoints(state, object.bonus);
     addMessage(state, `물고기 +${object.bonus}`);
     events.push({ type: "collect", kind: object.kind, points: object.bonus, message: state.message });
+    return;
+  }
+
+  if (
+    state.player.flightTimer > 0 &&
+    (object.kind === "hole" ||
+      object.kind === "crevasse" ||
+      (object.kind === "seal" && currentSealEmergence > 0.35))
+  ) {
+    object.collected = true;
+    awardPoints(state, SCORE_VALUES.jump);
+    addMessage(state, `비행 +${SCORE_VALUES.jump}`, 0.7);
+    events.push({ type: "collect", kind: object.kind, points: SCORE_VALUES.jump, message: state.message });
     return;
   }
 
@@ -242,13 +265,23 @@ export function updateGame(state: GameState, input: ActionState, deltaSeconds: n
 
   state.player.speed = clamp(state.player.speed, MIN_SPEED, MAX_SPEED + (state.player.boostTimer > 0 ? 52 : 0));
 
-  if (input.jump && state.player.jumpY <= 0.5 && state.player.stumbleTimer <= 0) {
+  const wasFlying = state.player.flightTimer > 0;
+
+  if (wasFlying) {
+    state.player.flightTimer = Math.max(0, state.player.flightTimer - dt);
+    state.player.jumpY = Math.max(state.player.jumpY, FLIGHT_HEIGHT);
+    state.player.jumpVelocity = 0;
+  } else if (input.jump && state.player.jumpY <= 0.5 && state.player.stumbleTimer <= 0) {
     state.player.jumpVelocity = 735;
     state.player.jumpY = 1;
     events.push({ type: "jump" });
   }
 
-  if (state.player.jumpY > 0 || state.player.jumpVelocity > 0) {
+  if (wasFlying && state.player.flightTimer === 0 && state.player.jumpY > 0 && state.player.jumpVelocity === 0) {
+    state.player.jumpVelocity = -1;
+  }
+
+  if (state.player.flightTimer === 0 && (state.player.jumpY > 0 || state.player.jumpVelocity !== 0)) {
     state.player.jumpVelocity -= 1700 * dt;
     state.player.jumpY += state.player.jumpVelocity * dt;
     if (state.player.jumpY <= 0) {

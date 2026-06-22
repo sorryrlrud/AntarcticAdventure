@@ -84,6 +84,47 @@ describe("polar runner simulation", () => {
     expect(state.hiScore).toBe(1300);
   });
 
+  it("turns a blinking flag into temporary flight over hazards", () => {
+    const state = createInitialState(16);
+    const input = createActionState();
+    state.objects = [
+      {
+        id: "flash-flag",
+        kind: "flag",
+        distance: 15,
+        lane: 0,
+        width: 0.3,
+        bonus: SCORE_VALUES.flag,
+        variant: 3,
+        collected: false,
+        hit: false
+      }
+    ];
+    startOrContinue(state);
+    updateGame(state, input, 1 / 60);
+    expect(state.player.flightTimer).toBeGreaterThan(0);
+    expect(state.player.jumpY).toBeGreaterThan(120);
+    expect(state.score).toBe(SCORE_VALUES.flag);
+
+    state.objects = [
+      {
+        id: "flight-hole",
+        kind: "hole",
+        distance: state.distanceTravelled + 12,
+        lane: 0,
+        width: 0.3,
+        bonus: 0,
+        variant: 0,
+        collected: false,
+        hit: false
+      }
+    ];
+    const flightEvents = updateGame(state, input, 1 / 60);
+    expect(flightEvents.some((event) => event.type === "hit")).toBe(false);
+    expect(flightEvents.some((event) => event.type === "collect" && event.points === SCORE_VALUES.jump)).toBe(true);
+    expect(state.player.stumbleTimer).toBe(0);
+  });
+
   it("uses fixed flag and fish score values while generating courses", () => {
     const objects = createCourse(0, 2400, 1983, 0);
     const flags = objects.filter((object) => object.kind === "flag");

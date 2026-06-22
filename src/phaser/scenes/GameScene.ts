@@ -6,6 +6,7 @@ import {
   createInitialState,
   createInitialStateWithHighScore,
   createSnapshot,
+  FLIGHT_HEIGHT,
   getVisibleObjects,
   startOrContinue,
   togglePause,
@@ -23,7 +24,7 @@ interface ActionEventDetail {
 }
 
 interface DebugEventDetail {
-  command: "finish-stage";
+  command: "finish-stage" | "grant-flight";
 }
 
 export class GameScene extends Phaser.Scene {
@@ -100,9 +101,16 @@ export class GameScene extends Phaser.Scene {
 
   private onDebugAction = (event: Event): void => {
     const detail = (event as CustomEvent<DebugEventDetail>).detail;
-    if (!detail || detail.command !== "finish-stage" || this.state.phase !== "running") return;
-    this.state.objects = [];
-    this.state.distanceTravelled = Math.max(0, this.state.stage.length - 3);
+    if (!detail || this.state.phase !== "running") return;
+    if (detail.command === "finish-stage") {
+      this.state.objects = [];
+      this.state.distanceTravelled = Math.max(0, this.state.stage.length - 3);
+    }
+    if (detail.command === "grant-flight") {
+      this.state.player.flightTimer = 4;
+      this.state.player.jumpY = Math.max(this.state.player.jumpY, FLIGHT_HEIGHT);
+      this.state.player.jumpVelocity = 0;
+    }
   };
 
   private isLocalDebugHost(): boolean {
@@ -342,9 +350,22 @@ export class GameScene extends Phaser.Scene {
       .setAngle(this.state.player.stumbleTimer > 0 ? Math.sin(this.time.now / 70) * 7 : lane * 5)
       .setDepth(30);
 
+    if (this.state.player.flightTimer > 0) {
+      this.drawPropeller(p.x, y - 38, Math.max(1, height / 260));
+    }
+
     if (this.state.player.boostTimer > 0) {
       this.graphics.fillStyle(0xffd34a, 0.45).fillEllipse(p.x, y + 17, 50, 12);
     }
+  }
+
+  private drawPropeller(x: number, y: number, scale: number): void {
+    const spin = Math.sin(this.time.now / 45);
+    this.graphics.lineStyle(3 * scale, 0x102132, 1);
+    this.graphics.lineBetween(x - 14 * scale, y, x + 14 * scale, y);
+    this.graphics.lineStyle(2 * scale, 0xffffff, 0.9);
+    this.graphics.lineBetween(x - 20 * scale * Math.abs(spin), y - 2 * scale, x + 20 * scale * Math.abs(spin), y - 2 * scale);
+    this.graphics.fillStyle(0xffd34a, 1).fillCircle(x, y, 3 * scale);
   }
 
   private drawMapOverlay(width: number, height: number): void {

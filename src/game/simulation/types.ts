@@ -23,6 +23,7 @@ export interface PlayerState {
   jumpVelocity: number;
   stumbleTimer: number;
   boostTimer: number;
+  flightTimer: number;
 }
 
 export interface GameState {
