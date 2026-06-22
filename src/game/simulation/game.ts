@@ -15,7 +15,7 @@ function timeLimitFor(stageTimeLimit: number, lap: number): number {
   return Math.max(45, stageTimeLimit - lap * 4);
 }
 
-function makeStageState(seed: number, stageIndex: number, lap: number, score: number): GameState {
+function makeStageState(seed: number, stageIndex: number, lap: number, score: number, hiScore: number): GameState {
   const stage = stageForIndex(stageIndex);
   return {
     phase: "ready",
@@ -26,6 +26,7 @@ function makeStageState(seed: number, stageIndex: number, lap: number, score: nu
     distanceTravelled: 0,
     timeLeft: timeLimitFor(stage.timeLimit, lap),
     score,
+    hiScore: Math.max(hiScore, score),
     player: {
       lane: 0,
       speed: CRUISE_SPEED,
@@ -43,7 +44,16 @@ function makeStageState(seed: number, stageIndex: number, lap: number, score: nu
 }
 
 export function createInitialState(seed = 1983): GameState {
-  return makeStageState(seed, 0, 0, 0);
+  return makeStageState(seed, 0, 0, 0, 0);
+}
+
+export function createInitialStateWithHighScore(seed = 1983, hiScore = 0): GameState {
+  return makeStageState(seed, 0, 0, 0, hiScore);
+}
+
+function awardPoints(state: GameState, points: number): void {
+  state.score += points;
+  state.hiScore = Math.max(state.hiScore, state.score);
 }
 
 export function startOrContinue(state: GameState): GameEvent[] {
@@ -55,7 +65,7 @@ export function startOrContinue(state: GameState): GameEvent[] {
   }
 
   if (state.phase === "game-over") {
-    const next = makeStageState(state.seed + 1, 0, 0, 0);
+    const next = makeStageState(state.seed + 1, 0, 0, 0, state.hiScore);
     Object.assign(state, next, { phase: "running", message: "다시 출발!" });
     state.messageTimer = 1.6;
     return [{ type: "start", message: state.message }];
@@ -114,7 +124,7 @@ function handleCollision(state: GameState, object: CourseObject, events: GameEve
 
   if (object.kind === "flag") {
     object.collected = true;
-    state.score += object.bonus;
+    awardPoints(state, object.bonus);
     addMessage(state, `깃발 +${object.bonus}`);
     events.push({ type: "collect", kind: object.kind, points: object.bonus, message: state.message });
     return;
@@ -122,7 +132,7 @@ function handleCollision(state: GameState, object: CourseObject, events: GameEve
 
   if (object.kind === "fish" && isJumpingHigh) {
     object.collected = true;
-    state.score += object.bonus;
+    awardPoints(state, object.bonus);
     addMessage(state, `물고기 +${object.bonus}`);
     events.push({ type: "collect", kind: object.kind, points: object.bonus, message: state.message });
     return;
@@ -130,7 +140,7 @@ function handleCollision(state: GameState, object: CourseObject, events: GameEve
 
   if ((object.kind === "hole" || object.kind === "crevasse") && isJumpingHigh) {
     object.collected = true;
-    state.score += SCORE_VALUES.jump;
+    awardPoints(state, SCORE_VALUES.jump);
     addMessage(state, `점프 +${SCORE_VALUES.jump}`, 0.7);
     events.push({ type: "collect", kind: object.kind, points: SCORE_VALUES.jump, message: state.message });
     return;
@@ -158,7 +168,7 @@ function handleCollision(state: GameState, object: CourseObject, events: GameEve
 
   if (object.kind === "seal" && isJumpingVeryHigh) {
     object.collected = true;
-    state.score += SCORE_VALUES.jump;
+    awardPoints(state, SCORE_VALUES.jump);
     addMessage(state, `물개 점프 +${SCORE_VALUES.jump}`);
     events.push({ type: "collect", kind: object.kind, points: SCORE_VALUES.jump, message: state.message });
   }
@@ -168,7 +178,7 @@ function advanceStage(state: GameState): GameEvent[] {
   const nextStageIndex = state.stageIndex + 1;
   const nextLap = state.lap + (nextStageIndex >= TOTAL_STAGES ? 1 : 0);
   const score = state.score;
-  const next = makeStageState(state.seed, nextStageIndex % TOTAL_STAGES, nextLap, score);
+  const next = makeStageState(state.seed, nextStageIndex % TOTAL_STAGES, nextLap, score, state.hiScore);
   Object.assign(state, next, { phase: "map", message: "남극 지도 확인" });
   state.mapTimer = 1.8;
   return [{ type: "map", message: state.message }];
@@ -266,7 +276,7 @@ export function updateGame(state: GameState, input: ActionState, deltaSeconds: n
 
   if (state.distanceTravelled >= state.stage.length) {
     const timeBonus = Math.ceil(state.timeLeft) * SCORE_VALUES.timeSecond;
-    state.score += timeBonus;
+    awardPoints(state, timeBonus);
     state.phase = "stage-clear";
     state.clearTimer = 2.5;
     state.message = `도착! TIME BONUS +${timeBonus}`;
@@ -288,6 +298,7 @@ export function createSnapshot(state: GameState): GameSnapshot {
   return {
     phase: state.phase,
     score: state.score,
+    hiScore: state.hiScore,
     stageIndex: state.stageIndex,
     stageCount: STAGES.length,
     lap: state.lap,

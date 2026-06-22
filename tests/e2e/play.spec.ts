@@ -1,8 +1,11 @@
 import { expect, test } from "@playwright/test";
 
 test("boots and responds to keyboard controls", async ({ page }) => {
+  await page.addInitScript(() => window.localStorage.setItem("polar-dash-hi-score", "1234"));
   await page.goto("/");
   await expect(page.getByRole("button", { name: "START" })).toBeVisible();
+  await expect(page.locator("#hi-score")).toHaveText("001234");
+  await expect(page.locator("#rest")).not.toHaveText("0000");
   await page.keyboard.press("Enter");
   await page.keyboard.down("ArrowRight");
   await page.keyboard.down("ArrowUp");

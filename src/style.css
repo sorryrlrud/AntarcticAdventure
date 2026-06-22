@@ -89,6 +89,8 @@ button {
 }
 
 .top-hud {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, auto));
   top: 10px;
   left: 10px;
   right: 10px;
@@ -275,20 +277,25 @@ button {
   }
 
   .top-hud {
-    gap: 5px;
+    gap: 4px;
   }
 
   .hud-cell {
-    min-width: 62px;
-    padding: 4px 5px;
+    min-width: 0;
+    padding: 3px 3px;
+    border-width: 1px;
   }
 
   .hud-cell.route {
-    min-width: 88px;
+    min-width: 0;
   }
 
   .hud-label {
-    font-size: 8px;
+    font-size: 7px;
+  }
+
+  .hud strong {
+    font-size: clamp(11px, 3.45vw, 15px);
   }
 
   .bottom-hud {

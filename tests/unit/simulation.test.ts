@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { stageForIndex } from "../../src/game/content/stages";
 import { createActionState } from "../../src/game/input/actions";
-import { createInitialState, startOrContinue, updateGame } from "../../src/game/simulation/game";
+import { createInitialState, createInitialStateWithHighScore, startOrContinue, updateGame } from "../../src/game/simulation/game";
 import { createCourse } from "../../src/game/simulation/course";
 import { SCORE_VALUES } from "../../src/game/simulation/scoring";
 
@@ -52,6 +52,35 @@ describe("polar runner simulation", () => {
     expect(events.some((event) => event.type === "collect")).toBe(true);
     expect(state.score).toBe(SCORE_VALUES.flag);
     expect(state.objects[0].collected).toBe(true);
+  });
+
+  it("tracks high score across scoring and restarts", () => {
+    const state = createInitialStateWithHighScore(15, 1200);
+    const input = createActionState();
+    state.objects = [
+      {
+        id: "flag",
+        kind: "flag",
+        distance: 15,
+        lane: 0,
+        width: 0.3,
+        bonus: SCORE_VALUES.flag,
+        variant: 0,
+        collected: false,
+        hit: false
+      }
+    ];
+    startOrContinue(state);
+    updateGame(state, input, 1 / 60);
+    expect(state.score).toBe(SCORE_VALUES.flag);
+    expect(state.hiScore).toBe(1200);
+
+    state.score = 1300;
+    state.hiScore = 1300;
+    state.phase = "game-over";
+    startOrContinue(state);
+    expect(state.score).toBe(0);
+    expect(state.hiScore).toBe(1300);
   });
 
   it("uses fixed flag and fish score values while generating courses", () => {

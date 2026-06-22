@@ -4,6 +4,7 @@ import type { GameAction } from "../../game/input/actions";
 import { createActionState, setAction } from "../../game/input/actions";
 import {
   createInitialState,
+  createInitialStateWithHighScore,
   createSnapshot,
   getVisibleObjects,
   startOrContinue,
@@ -40,12 +41,15 @@ export class GameScene extends Phaser.Scene {
   private previousMute = false;
   private previousJump = false;
   private muted = false;
+  private persistedHiScore = 0;
 
   constructor() {
     super("game");
   }
 
   create(): void {
+    this.persistedHiScore = this.loadHighScore();
+    this.state = createInitialStateWithHighScore(1983, this.persistedHiScore);
     createGameTextures(this);
     this.graphics = this.add.graphics();
     this.station = this.add.image(0, 0, "station").setVisible(false).setDepth(7);
@@ -373,6 +377,20 @@ export class GameScene extends Phaser.Scene {
   }
 
   private publishState(): void {
-    window.dispatchEvent(new CustomEvent("polar-state", { detail: createSnapshot(this.state) }));
+    const snapshot = createSnapshot(this.state);
+    if (snapshot.hiScore > this.persistedHiScore) {
+      this.persistedHiScore = snapshot.hiScore;
+      this.saveHighScore(snapshot.hiScore);
+    }
+    window.dispatchEvent(new CustomEvent("polar-state", { detail: snapshot }));
+  }
+
+  private loadHighScore(): number {
+    const value = Number.parseInt(window.localStorage.getItem("polar-dash-hi-score") ?? "0", 10);
+    return Number.isFinite(value) && value > 0 ? value : 0;
+  }
+
+  private saveHighScore(score: number): void {
+    window.localStorage.setItem("polar-dash-hi-score", Math.floor(score).toString());
   }
 }

@@ -13,8 +13,10 @@ function dispatchAction(action: GameAction, pressed: boolean): void {
 
 export function mountHud(): void {
   const score = text("score");
+  const hiScore = text("hi-score");
   const course = text("course");
   const time = text("time");
+  const rest = text("rest");
   const speed = text("speed");
   const message = text("message");
   const station = text("station");
@@ -41,8 +43,10 @@ export function mountHud(): void {
   window.addEventListener("polar-state", (event) => {
     const state = (event as CustomEvent<GameSnapshot>).detail;
     score.textContent = Math.floor(state.score).toString().padStart(6, "0");
+    hiScore.textContent = Math.floor(state.hiScore).toString().padStart(6, "0");
     course.textContent = state.lap > 0 ? `${state.stageIndex + 1}/${state.stageCount} L${state.lap + 1}` : `${state.stageIndex + 1}/${state.stageCount}`;
     time.textContent = Math.ceil(state.timeLeft).toString().padStart(2, "0");
+    rest.textContent = Math.ceil(state.distanceLeft).toString().padStart(4, "0");
     speed.textContent = Math.round(state.speed).toString().padStart(3, "0");
     message.textContent =
       state.message ||

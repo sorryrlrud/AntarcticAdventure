@@ -34,6 +34,7 @@ export interface GameState {
   distanceTravelled: number;
   timeLeft: number;
   score: number;
+  hiScore: number;
   player: PlayerState;
   objects: CourseObject[];
   message: string;
@@ -62,6 +63,7 @@ export interface GameEvent {
 export interface GameSnapshot {
   phase: GamePhase;
   score: number;
+  hiScore: number;
   stageIndex: number;
   stageCount: number;
   lap: number;
